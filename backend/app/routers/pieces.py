@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -9,6 +10,9 @@ from .. import models, schemas, auth
 from ..database import get_db
 from ..config import settings
 from ..models import PieceType, Surface
+
+# Create optional OAuth2 scheme
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 router = APIRouter(
     prefix="/api/pieces",
@@ -87,9 +91,43 @@ def read_pieces(
     piece_type: Optional[PieceType] = None,
     surface: Optional[Surface] = None,
     search: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: Optional[models.User] = Depends(auth.get_current_user)
+    db: Session = Depends(get_db)
 ):
+    """Get list of public pieces with optional filters"""
+    # No authentication required - public endpoint
+    query = db.query(models.Piece).filter(models.Piece.is_public == True)
+    
+    if piece_type:
+        query = query.filter(models.Piece.piece_type == piece_type)
+    
+    if surface:
+        query = query.filter(models.Piece.surface == surface)
+    
+    if search:
+        query = query.join(models.User).filter(
+            (models.Piece.title.contains(search)) |
+            (models.Piece.description.contains(search)) |
+            (models.User.username.contains(search)) |
+            (models.User.tag_name.contains(search))
+        )
+    
+    pieces = query.order_by(models.Piece.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # Add stats to each piece
+    pieces_with_stats = []
+    for piece in pieces:
+        likes_count = db.query(models.Like).filter(models.Like.piece_id == piece.id).count()
+        comments_count = db.query(models.Comment).filter(models.Comment.piece_id == piece.id).count()
+        
+        piece_dict = piece.__dict__.copy()
+        piece_dict['likes_count'] = likes_count
+        piece_dict['comments_count'] = comments_count
+        piece_dict['is_liked_by_user'] = False  # Always false for unauthenticated users
+        piece_dict['artist'] = piece.artist
+        
+        pieces_with_stats.append(schemas.PieceWithStats(**piece_dict))
+    
+    return pieces_with_stats
     """Get list of public pieces with optional filters"""
     query = db.query(models.Piece).filter(models.Piece.is_public == True)
     
