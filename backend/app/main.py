@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from .config import settings
-from .database import engine
+from .database import engine, get_db
 from . import models
 
 # Create database tables
@@ -40,8 +41,18 @@ def health_check():
     """Health check endpoint for monitoring"""
     return {"status": "healthy"}
 
-# Test endpoint to check API is working
-@app.get("/api/test")
-def test_endpoint():
-    """Test endpoint to verify API routing"""
-    return {"message": "API is working!", "endpoint": "/api/test"}
+# Include routers
+from .routers import auth, users, pieces, comments
+
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(pieces.router)
+app.include_router(comments.router)
+
+# Serve uploaded files (in production, use a proper file server)
+from fastapi.staticfiles import StaticFiles
+import os
+
+uploads_path = os.path.join(os.path.dirname(__file__), "..", "uploads")
+if os.path.exists(uploads_path):
+    app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
