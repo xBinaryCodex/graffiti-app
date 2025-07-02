@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Home from './pages/Home.tsx';
 import Login from './pages/Login.tsx';
 import Register from './pages/Register.tsx';
+import UserProfile from './pages/UserProfile.tsx';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -35,6 +36,7 @@ function App() {
           path="/register" 
           element={isAuthenticated ? <Navigate to="/" /> : <Register />} 
         />
+        <Route path="/user/:username" element={<UserProfile />} />
       </Routes>
     </Router>
   );

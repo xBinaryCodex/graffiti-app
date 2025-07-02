@@ -304,7 +304,13 @@ export default function Home() {
                   />
                   <div className="p-4">
                     <h3 className="font-bold text-lg mb-2">{piece.title}</h3>
-                    <p className="text-gray-400 text-sm mb-2">
+                    <p 
+                      className="text-gray-400 text-sm mb-2 cursor-pointer hover:text-purple-400 transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/user/${piece.artist?.username}`);
+                      }}
+                    >
                       by {piece.artist?.tag_name || piece.artist?.username || 'Unknown'}
                     </p>
                     <div className="flex justify-between items-center">
